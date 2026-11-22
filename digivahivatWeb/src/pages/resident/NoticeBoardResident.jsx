@@ -1,0 +1,143 @@
+/**
+ * src/pages/resident/NoticeBoardResident.jsx
+ * Resident View for Society Notices & Announcements
+ */
+import React, { useState, useEffect, useCallback } from 'react';
+import { Megaphone, Pin, Calendar, Eye, Loader2 } from 'lucide-react';
+import { noticesAPI } from '../../services/api';
+import { Modal } from '../../components/Modal';
+import { Badge } from '../../components/Badge';
+import { fmtDateTime, NOTICE_CATEGORIES } from '../../constants';
+import { useToast } from '../../context/ToastContext';
+
+export const NoticeBoardResident = () => {
+  const { showError } = useToast();
+  const [notices, setNotices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [activeNotice, setActiveNotice] = useState(null);
+
+  const fetchNotices = useCallback(async () => {
+    try {
+      const params = {};
+      if (selectedCategory !== 'All') params.category = selectedCategory;
+      const res = await noticesAPI.getAll(params);
+      setNotices(res.data?.data || []);
+    } catch (err) {
+      showError(err.message || 'Could not fetch notices.');
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedCategory, showError]);
+
+  useEffect(() => {
+    fetchNotices();
+  }, [fetchNotices]);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+          Society Circulars & Notice Board
+        </h1>
+        <p className="text-xs text-slate-500 mt-0.5">
+          Official society announcements, general body meetings, and festival schedules
+        </p>
+      </div>
+
+      {/* Category Pills */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        {NOTICE_CATEGORIES.map((cat) => (
+          <button
+            key={cat}
+            onClick={() => setSelectedCategory(cat)}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer ${
+              selectedCategory === cat
+                ? 'bg-gradient-to-r from-[#00AFEF] to-[#3E4095] text-white shadow-2xs'
+                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+
+      {/* Notices Grid */}
+      {loading ? (
+        <div className="py-16 text-center">
+          <Loader2 className="w-8 h-8 text-[#00AFEF] animate-spin mx-auto" />
+        </div>
+      ) : notices.length === 0 ? (
+        <div className="p-12 text-center text-slate-400 text-xs bg-white rounded-3xl border border-slate-200">
+          No notices found in this category.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {notices.map((n) => (
+            <div
+              key={n._id}
+              onClick={() => setActiveNotice(n)}
+              className={`bg-white rounded-3xl p-6 border shadow-xs hover:shadow-md transition cursor-pointer flex flex-col justify-between space-y-4 ${
+                n.pinned
+                  ? 'border-sky-300 ring-2 ring-sky-100 bg-gradient-to-b from-sky-50/20 to-white'
+                  : 'border-slate-200/90'
+              }`}
+            >
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
+                      {n.category || 'General'}
+                    </span>
+                    {n.pinned && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-md border border-sky-200">
+                        <Pin className="w-3 h-3 text-sky-600 rotate-45" />
+                        Pinned
+                      </span>
+                    )}
+                  </div>
+                  <Badge status={n.priority || 'Normal'} />
+                </div>
+
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 leading-snug">
+                    {n.title}
+                  </h3>
+                  <p className="text-xs text-slate-600 mt-1 line-clamp-3 leading-relaxed">
+                    {n.description}
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+                <span>{fmtDateTime(n.createdAt)}</span>
+                <span className="text-[#00AFEF] font-bold">Read Circular →</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* View Notice Detail Modal */}
+      <Modal
+        isOpen={Boolean(activeNotice)}
+        onClose={() => setActiveNotice(null)}
+        title={activeNotice?.title || 'Notice Details'}
+        subtitle={`Circular published on ${fmtDateTime(activeNotice?.createdAt)}`}
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700">
+              {activeNotice?.category}
+            </span>
+            <Badge status={activeNotice?.priority || 'Normal'} />
+          </div>
+
+          <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 text-xs sm:text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">
+            {activeNotice?.description}
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+};
