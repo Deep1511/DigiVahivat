@@ -21,7 +21,7 @@ export const LoginPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { login, user: currentUser, role } = useAuth();
-  const { showError } = useToast();
+  const { showSuccess, showError } = useToast();
 
   const [phone, setPhone] = useState(searchParams.get('phone') || '');
   const [password, setPassword] = useState('');
